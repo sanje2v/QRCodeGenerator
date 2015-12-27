@@ -19,7 +19,7 @@ void SetConsoleAttributes()
 {
 	SetConsoleTitle(L"QR Code Generator in version 1 by http://sanje2v.wordpress.com/");
 
-	// Set foreground white and background black
+	// Set foreground to intense white and background to black
 	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE),
 							FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY);
 }
@@ -28,11 +28,12 @@ void SetupConsoleForQRCode()
 {
 	auto hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	// NOTE: THe following font info was collected by setting using OS
+	// NOTE: The following font info was collected by setting console
+	//		 properties then checking change with Windows API
 	CONSOLE_FONT_INFOEX fontinfoex;
 	fontinfoex.cbSize = sizeof(fontinfoex);
-	fontinfoex.dwFontSize = COORD{ 8, 8 };
-	wcscpy_s(fontinfoex.FaceName, L"Terminal");
+	fontinfoex.dwFontSize = COORD{ 8, 8 };		// Font height pixel count should be equal to width pixel
+	wcscpy_s(fontinfoex.FaceName, L"Terminal");	// Monospaced font
 	fontinfoex.FontFamily = 48;
 	fontinfoex.FontWeight = 400;
 	fontinfoex.nFont = 2;		// WARNING: This index number is not documented,
@@ -40,8 +41,8 @@ void SetupConsoleForQRCode()
 
 	SetCurrentConsoleFontEx(hConsole, FALSE, &fontinfoex);
 
-	auto hwndConsole = GetConsoleWindow();
-	SetWindowPos(hwndConsole, NULL, 0, 0, 640, 480, SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOREPOSITION);
+	// Resize console window
+	SetWindowPos(GetConsoleWindow(), NULL, 0, 0, 640, 480, SWP_NOOWNERZORDER | SWP_NOMOVE | SWP_NOREPOSITION);
 }
 
 
@@ -83,9 +84,9 @@ int main(int argc, wchar_t *argv[])
 
 	std::cout << std::endl << std::endl;
 
-	static const int QUIETZONE_SIZE = 4;	// Specification says should have atleast 4 modules of surrounding quiet zone
+	static const int QUIETZONE_SIZE = 4;	// Specification says should have 4 modules of surrounding quiet zone
 	static const int QRCODE_SIZE = MODULE_SIZE + QUIETZONE_SIZE * 2;
-	unsigned char QRCode[QRCODE_SIZE * QRCODE_SIZE] = { 0 };	// IMPORTANT: Fill with 0 to represent unused regions
+	unsigned char QRCode[QRCODE_SIZE * QRCODE_SIZE] = { 0 };	// IMPORTANT: Fill with '0' to represent unused regions
 
 	// Add Quiet Zone around QR code
 	AddQuietZone(QRCode, QRCODE_SIZE, QUIETZONE_SIZE);
@@ -277,4 +278,3 @@ int main(int argc, wchar_t *argv[])
 
     return 0;
 }
-

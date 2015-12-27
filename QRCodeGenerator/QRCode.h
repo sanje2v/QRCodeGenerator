@@ -16,7 +16,7 @@
 #define BOOL_TO_MODULE(x)			((x) ? DARK_MODULE : LIGHT_MODULE)
 #define BOOL_TO_BIT(x)				((x) ? 1 : 0)
 
-// CAUTION: LIGHT_MODULE represent '0' and vice-versa
+// CAUTION: LIGHT_MODULE represent binary '0' and vice-versa
 static const unsigned char LIGHT_MODULE = 219;	// Filled white block character
 static const unsigned char DARK_MODULE = 32;	// Space character
 
@@ -120,6 +120,7 @@ static std::unordered_map<char, const std::vector<int>> mapErrorCorrectionPolyno
 	{ 'H', { 0,  43, 139, 206,  78,  43, 239, 123, 206, 214, 147,  24,  99, 150,  39, 243, 163, 136 } }
 };
 
+// NOTE: These could be generated but a table lookup is far easy to generate as well as reduces load for CPU
 static std::unordered_map<char, const std::array<std::bitset<FORMAT_SIZE>, NUM_MASK_GENERATORS>> mapErrorCorrectionFormatString =
 {
 	{ 'L', { 0b111011111000100, 0b111001011110011, 0b111110110101010, 0b111100010011101, 0b110011000101111, 0b110001100011000, 0b110110001000001, 0b110100101110110 } },
@@ -144,6 +145,8 @@ static const std::function<bool(int, int)> maskGeneratorTable[NUM_MASK_GENERATOR
 static const int ALPHANUMERIC_ENCODING_TABLE_SIZE = 45;
 static int EncodeAlphanumericValue(char value)
 {
+	// NOTE: All lowercase characters are encoded as uppercase and unsupported
+	//		 symbols are encoded as '$'
 	if (value >= '0' && value <= '9')
 		return ((int)value - '0') + 0;
 	else if (value >= 'A' && value <= 'Z')
@@ -233,6 +236,7 @@ void AddFinderPatternSeparatorBottomLeft(unsigned char *qrcode, int qrcodesize, 
 
 void AddTimingPattern(unsigned char *qrcode, int qrcodesize, int quietzonesize, int finderpatternsize)
 {
+	//NOTE: 'BOOL_TO_MODULE(!(x & 0x1))' generates alternating light and dark modules starting with dark module
 	for (int i = quietzonesize + finderpatternsize + 1; i < qrcodesize - (quietzonesize + finderpatternsize + 1); ++i)
 		qrcode[i * qrcodesize + (quietzonesize + finderpatternsize - 1)] = BOOL_TO_MODULE(!((i - (quietzonesize + finderpatternsize + 1)) & 0x1));
 
@@ -245,7 +249,12 @@ void AddCompulsoryDarkModule(unsigned char *qrcode, int qrcodesize, int quietzon
 	qrcode[(qrcodesize - (quietzonesize + finderpatternsize + 1)) * qrcodesize + (quietzonesize + finderpatternsize + 1)] = DARK_MODULE;
 }
 
-void AddCodewords(const std::vector<bool>& datacodewords, const std::vector<bool>& errorcodewords, unsigned char *qrcode, int qrcodesize, int quietzonesize, int finderpatternsize)
+void AddCodewords(const std::vector<bool>& datacodewords,
+				  const std::vector<bool>& errorcodewords,
+				  unsigned char *qrcode,
+				  int qrcodesize,
+				  int quietzonesize,
+				  int finderpatternsize)
 {
 	auto isModuleOccupied = [&qrcode, &qrcodesize, &quietzonesize, &finderpatternsize](int row, int col) -> bool
 	{
@@ -364,7 +373,7 @@ void AddCodewords(const std::vector<bool>& datacodewords, const std::vector<bool
 					break;
 			}
 
-			// If we are in column with vertical timing patter,
+			// If we are in column with vertical timing pattern,
 			// skip this column and start from next one
 			if (columnWalk == (quietzonesize + finderpatternsize - 1))
 				--columnWalk;
@@ -448,7 +457,7 @@ int DetermineMaskPatternWithLowestPenaltyScore(unsigned char *qrcode, int qrcode
 					}
 				}
 				
-				// Check if in reserved (format information) areas, they are always light modules
+				// Check if in reserved (format information) areas - they are always light modules
 				if (((i >= 0 && i < (finderpatternsize - 1)) || (i >= finderpatternsize && i <= (finderpatternsize + 1)) &&
 					 j == (finderpatternsize + 1)))
 				{
@@ -510,7 +519,7 @@ int DetermineMaskPatternWithLowestPenaltyScore(unsigned char *qrcode, int qrcode
 							break;
 					}
 
-					j = k;
+					j = k - 1;	// CAUTION: We need to decrement 1 as the outer for loop will increment it
 				}
 			}
 
@@ -538,7 +547,7 @@ int DetermineMaskPatternWithLowestPenaltyScore(unsigned char *qrcode, int qrcode
 							break;
 					}
 
-					i = k;
+					i = k - 1;	// CAUTION: We need to decrement 1 as the outer for loop will increment it
 				}
 			}
 
@@ -571,7 +580,7 @@ int DetermineMaskPatternWithLowestPenaltyScore(unsigned char *qrcode, int qrcode
 					penaltyScore += 40;
 			}
 
-		/*for (int j = 0; j < modulessize; ++j)
+		for (int j = 0; j < modulessize; ++j)
 			for (int i = 0; i < (modulessize - static_cast<int>(pattern1.size())); ++i)
 			{
 				// Search rowwise
@@ -584,7 +593,7 @@ int DetermineMaskPatternWithLowestPenaltyScore(unsigned char *qrcode, int qrcode
 				if (std::equal(row.cbegin(), row.cend(), pattern1.begin()) ||
 					std::equal(row.cbegin(), row.cend(), pattern2.begin()))
 					penaltyScore += 40;
-			}*/
+			}
 
 		// Evaluation condition #4
 		const int TotalModules = modulessize * modulessize;
